@@ -1,0 +1,21 @@
+{
+  "name": "gapps-cli",
+  "version": "1.0.0",
+  "description": "CLI for working with Google Apps Script",
+  "main": "index.js",
+  "scripts": {
+    "test": "test"
+  },
+  "bin": {
+    "gapps": "./index.js"
+  },
+  "author": "Dan Wilkerson <dwilkerson@lunametrics.com>",
+  "license": "ISC",
+  "dependencies": {
+    "async": "^2.0.1",
+    "express": "^4.14.0",
+    "googleapis": "^12.3.0",
+    "minimist": "^1.2.0",
+    "prompt": "^1.0.0"
+  }
+}
