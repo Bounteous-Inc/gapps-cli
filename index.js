@@ -8,9 +8,9 @@ const minimist = require('minimist')
 const express = require('express')
 const fs = require('fs')
 const async = require('async')
-const configFilePath = argv.config || __dirname + '.gappclisrc'
 const Config = require('./lib/Config.js')(configFilePath)
 const CliInterface = require('./lib/CliInterface.js')
+const GoogleAuth2 = require('./lib/GoogleOAuth2.js')
 
 // TODO let these be command line arg and save them
 const clientId = '44544723576-4j6pi07nh525fo4q40nqav73svgditkd.apps.googleusercontent.com'
@@ -23,7 +23,7 @@ async.each(['fileId', 'clientId', 'clientSecret']
 
     if (err) return console.log(err.message)
 
-    CliInterface(argv, Config)
+    CliInterface(argv)
 
   })
 
@@ -46,7 +46,7 @@ function checkToken(callback) {
 
   }
 
-  generateToken_(function(err, tokens) {
+  GoogleOAuth2.generateToken(function(err, tokens) {
 
     if (err) return callback(err)
 
@@ -95,59 +95,4 @@ function check_(name) {
 
   }
 
-}
-
-/**
- * @name generateToken_
- * @description
- * Starts temporary webserver and prompts the user to complete OAuth flow
- *
- * @arg callback
- */
-function generateToken_(callback) {
-
-  let OAuth2 = google.auth.OAuth2
-  let redirectUri = 'http://localhost:8080/redirect'
-  let scope = ['drive', 'drive.file'].map((name) => 'https://www.googleapis.com/auth/' + name)
-  let oauth2Client = new OAuth2(clientId, clientSecret, redirectUri)
-  let url = oauth2Client.generateAuthUrl({
-    access_type: 'offline',
-    scope: scope
-  }) 
-  let server = express()
-  let ref
-
-  server.get('/redirect', (req, res) => {
-
-    if(!req.query.code) return console.error('Error: code parameter missing in response')
-
-    // Close our webserver
-    ref.close((err) => err.message ? console.log(err.message) : '')
-
-    oauth2Client.getToken(req.query.code, function(err, tokens) {
-
-      if(err) {
-        return callback(err)
-      }   
-
-      // Store our tokens in memory for later use
-      res.send('OK! You may close this window')
-
-      callback(null, tokens)
-
-    })
-
-  })
-
-  // Preserve reference to HTTP server
-  ref = server.listen(8080, (err) => {
-
-    if (err) return callback(err)
-
-    console.log('Temporary server listening on port 8080 for OAuth callback')
-    console.log('Visit the following url: ') 
-    console.log(url)
-  
-  })
-  
 }
