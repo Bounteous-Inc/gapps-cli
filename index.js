@@ -1,74 +1,94 @@
 #!/usr/bin/env node
 'use strict'
+let argv = require('minimist')(process.argv.slice(2));
 
 const google = require('googleapis')
 const prompt = require('prompt')
 const minimist = require('minimist')
-const configDirPath = __dirname + '/.gapps'
-const ignoreFilePath = __dirname + '/.gappsignore'
-const tokenFilePath = configDirPath + '/token.json'
 const express = require('express')
 const fs = require('fs')
 const async = require('async')
-const GASServer = require('./lib/GASServer.js')
+const configFilePath = argv.config || __dirname + '.gappclisrc'
+const Config = require('./lib/Config.js')(configFilePath)
+const CliInterface = require('./lib/CliInterface.js')
 
+// TODO let these be command line arg and save them
 const clientId = '44544723576-4j6pi07nh525fo4q40nqav73svgditkd.apps.googleusercontent.com'
 const clientSecret = 'tqrdbO1KOJbNf0o3eqXH3lc1'
 
-let argv = require('minimist')(process.argv.slice(2));
+// Check required configs
+async.each(['fileId', 'clientId', 'clientSecret']
+  .map(field => check_(field))
+  .concat(checkToken), (err, result) => {
 
-setup()
+    if (err) return console.log(err.message)
 
-function setup() {
+    CliInterface(argv, Config)
 
-  if (!findConfig()) {
+  })
 
-    async.each([
-      // Check required configs
-      checkDirectory,
-      checkToken,
-      checkProjectId  
-    ], (err, result) => {
-
-      if (err) return console.log(err.message)
-
-      init()      
-
-    })
-
-  }
-
-}
-
-function checkDirectory(callback) {
-
-  if (!fs.existsSync(configDirPath)) {
-
-    fs.mkdirSync(configDirPath);
-
-  }
-
-  callback(null)
-
-}
-
+/**
+ * @name checkToken
+ * @description
+ * Checks to see if a token property exists in the config
+ *
+ * @arg callback {function}
+ */
 function checkToken(callback) {
-
-  if (getToken_()) return callback(null)
+    
+  if (Config.token.get()) return callback(null)
 
   // Token can be passed in as an argument
   if (argv.token) {
 
-    storeToken_(tokenFilePath, {access_token: argv.token})
+    Config.token.set({access_token: argv.token})
+    return callback(null)
+
+  }
+
+  generateToken_(function(err, tokens) {
+
+    if (err) return callback(err)
+
+    Config.token.set(tokens)
     callback(null)
 
-  } else {
+  })
 
-    generateToken_(function(err, tokens) {
+}
+
+/**
+ * @name check_
+ * @description
+ * Factory that returns function for checking/setting required properties
+ *
+ * @arg name {string} name of configuration property
+ * @returns {function} function to check property or request it
+ */
+function check_(name) {
+
+  return function checkProp_(callback) {
+
+    if (Config[name].get()) return callback(null)
+
+    if (argv[name]) {
+
+      Config[name].set(arg[name])
+      return callback(null)
+
+    }
+
+    let promptProps = { properties: {} }
+
+    promptProps[name] = {
+      description: `What is the ${name} of the project?`
+    }
+
+    prompt.get(promptProps, (err, result) => {
 
       if (err) return callback(err)
 
-      storeToken_(tokenFilePath, tokens)
+      Config[name].set(result)
       callback(null)
 
     })
@@ -77,35 +97,13 @@ function checkToken(callback) {
 
 }
 
-function checkProjectId() {
-
-  if (!getProjectId_()) {
-
-    if (argv.projectId) {
-
-      storeProjectId_(argv.projectId)
-
-    } else {
-
-      prompt.get({
-        properties: {
-          fileId: {
-            description: 'What is the File ID of the project?'
-          }
-        }
-      }, function(err, result) {
-
-        console.log(result)
-
-      })
-
-    }
-
-  }
-
-}
-
-// Prompts user to open browser, gets token for API
+/**
+ * @name generateToken_
+ * @description
+ * Starts temporary webserver and prompts the user to complete OAuth flow
+ *
+ * @arg callback
+ */
 function generateToken_(callback) {
 
   let OAuth2 = google.auth.OAuth2
@@ -152,121 +150,4 @@ function generateToken_(callback) {
   
   })
   
-}
-
-function init(err) {
-
-  if (err) return console.log(err.message)
-
-  let cmd = argv._[0]
-
-  this[cmd](argv._.slice(1))
-
-}
-
-function commit() {
-
-
-}
-
-function add() {
-
-}
-
-function rm() {
-
-
-}
-
-function push() {
-
-  
-
-}
-
-function fetch() {
-
-
-}
-
-function run() {
-
-  GASServer.run()
-
-}
-
-function isValidFile(filename) {
-
-  return !_ignoreFile.reduce(function(bool, pattern) {
-
-    pattern = pattern.replace(/\*/g, '.*')
-
-    let regex = new RegExp(pattern)
-
-    return filename.match(regex) && bool
-
-  }, false);
-
-}
-
-function getCurrentFiles() {
-
-
-}
-
-function isFileStored() {
-
-}
-
-function findConfig() {
-
-  let config
-
-  try {
-    config = fs.readFileSync('./gapps/.gappsrc')
-  } catch(e) {}
-
-  return config
-
-}
-
-function storeToken_(path, tokens) {
-
-  fs.writeFileSync(path, JSON.stringify(tokens))
-
-}
-
-function getToken_(path) {
-
-  let token
-
-  try {
-   token = JSON.parse(fs.readFileSync(path))
-  } catch(e) {}
-
-  return token
-
-}
-
-function getProjectId_() {
-
-
-}
-
-function storeProjectId_(path, id) {
-
-  // Get the file
-  let data
-
-  try {
-
-    fs.readFileSync('./')
-
-  } catch(e) {
-
-    getProjectId
-
-  }
-  // Add the ID
-
 }
