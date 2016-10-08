@@ -13,19 +13,18 @@ const CliInterface = require('./lib/CliInterface.js')
 const GoogleAuth2 = require('./lib/GoogleOAuth2.js')
 
 // TODO let these be command line arg and save them
-const clientId = '44544723576-4j6pi07nh525fo4q40nqav73svgditkd.apps.googleusercontent.com'
-const clientSecret = 'tqrdbO1KOJbNf0o3eqXH3lc1'
-
 // Check required configs
-async.each(['fileId', 'clientId', 'clientSecret']
-  .map(field => check_(field))
-  .concat(checkToken), (err, result) => {
+async.each([
+  checkToken,
+  check('fileId'),
+  checkKeys
+], (err, result) => {
 
-    if (err) return console.log(err.message)
+  if (err) return console.log(err.message)
 
-    CliInterface(argv)
+  CliInterface(argv)
 
-  })
+})
 
 /**
  * @name checkToken
@@ -58,14 +57,48 @@ function checkToken(callback) {
 }
 
 /**
- * @name check_
+ * @name checkKeys
+ * @description
+ * Checks for a path to a clientSecret and clientId passed in as a command
+ * line argument
+ *
+ * @arg callback {function}
+ */
+function checkKeys(callback) {
+
+  if (!argv.keys) {
+
+    prompt.get('Keys file path', (err, result) => {
+
+      if (err) return callback(err)
+      
+      callback(null, getConfig_(path))
+
+    })
+
+  } else {
+
+    callback(null, getConfig_(argv.keys))
+
+  }
+
+  function getConfig_(path) {
+
+    return JSON.parse(fs.readFileSync(path))
+
+  }
+
+}
+
+/**
+ * @name check
  * @description
  * Factory that returns function for checking/setting required properties
  *
  * @arg name {string} name of configuration property
  * @returns {function} function to check property or request it
  */
-function check_(name) {
+function check(name) {
 
   return function checkProp_(callback) {
 
