@@ -17,5 +17,8 @@
     "googleapis": "^12.3.0",
     "minimist": "^1.2.0",
     "prompt": "^1.0.0"
+  },
+  "devDependencies": {
+    "mocha": "^3.1.2"
   }
 }
